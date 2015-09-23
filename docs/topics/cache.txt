@@ -79,8 +79,8 @@ After installing Memcached itself, you'll need to install a Memcached
 binding. There are several Python Memcached bindings available; the
 two most common are `python-memcached`_ and `pylibmc`_.
 
-.. _`python-memcached`: ftp://ftp.tummy.com/pub/python-memcached/
-.. _`pylibmc`: http://sendapatch.se/projects/pylibmc/
+.. _`python-memcached`: https://pypi.python.org/pypi/python-memcached
+.. _`pylibmc`: https://pypi.python.org/pypi/pylibmc
 
 To use Memcached with Django:
 
@@ -206,6 +206,9 @@ If you are using multiple databases, :djadmin:`createcachetable` observes the
 Like :djadmin:`migrate`, :djadmin:`createcachetable` won't touch an existing
 table. It will only create missing tables.
 
+To print the SQL that would be run, rather than run it, use the
+:djadminopt:`--dry-run` option.
+
 Multiple databases
 ~~~~~~~~~~~~~~~~~~
 
@@ -298,7 +301,7 @@ example::
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'unique-snowflake'
+            'LOCATION': 'unique-snowflake',
         }
     }
 
@@ -554,7 +557,7 @@ setting for the middleware.  It can be used like this::
     def my_view(request):
         ...
 
-The ``key_prefix and ``cache`` arguments may be specified together. The
+The ``key_prefix`` and ``cache`` arguments may be specified together. The
 ``key_prefix`` argument and the :setting:`KEY_PREFIX <CACHES-KEY_PREFIX>`
 specified under :setting:`CACHES` will be concatenated.
 
@@ -777,6 +780,25 @@ update the cache if the key specified is already present::
 If you need to know whether ``add()`` stored a value in the cache, you can
 check the return value. It will return ``True`` if the value was stored,
 ``False`` otherwise.
+
+If you want to get a key's value or set a value if the key isn't in the cache,
+there is the ``get_or_set()`` method. It takes the same parameters as ``get()``
+but the default is set as the new cache value for that key, rather than simply
+returned::
+
+    >>> cache.get('my_new_key')  # returns None
+    >>> cache.get_or_set('my_new_key', 'my new value', 100)
+    'my new value'
+
+You can also pass any callable as a *default* value::
+
+    >>> import datetime
+    >>> cache.get_or_set('some-timestamp-key', datetime.datetime.now)
+    datetime.datetime(2014, 12, 11, 0, 15, 49, 457920)
+
+.. versionchanged:: 1.9
+
+    The ``get_or_set()`` method was added.
 
 There's also a ``get_many()`` interface that only hits the cache once.
 ``get_many()`` returns a dictionary with all the keys you asked for that
@@ -1187,7 +1209,7 @@ the value of the :setting:`CACHE_MIDDLEWARE_SECONDS` setting. If you use a custo
 precedence, and the header values will be merged correctly.)
 
 If you want to use headers to disable caching altogether,
-``django.views.decorators.cache.never_cache`` is a view decorator that adds
+:func:`django.views.decorators.cache.never_cache` is a view decorator that adds
 headers to ensure the response won't be cached by browsers or other caches.
 Example::
 

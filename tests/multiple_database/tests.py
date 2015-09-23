@@ -11,7 +11,7 @@ from django.core import management
 from django.db import DEFAULT_DB_ALIAS, connections, router, transaction
 from django.db.models import signals
 from django.db.utils import ConnectionRouter
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils.encoding import force_text
 from django.utils.six import StringIO
 
@@ -188,15 +188,23 @@ class QueryTestCase(TestCase):
         self.assertEqual(Book.authors.through.objects.using('other').count(), 1)
 
         # Check that queries work across m2m joins
-        self.assertEqual(list(Book.objects.using('default').filter(authors__name='Marty Alchin').values_list('title', flat=True)),
-            ['Pro Django'])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Marty Alchin').values_list('title', flat=True)),
-            [])
+        self.assertEqual(
+            list(Book.objects.using('default').filter(authors__name='Marty Alchin').values_list('title', flat=True)),
+            ['Pro Django']
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Marty Alchin').values_list('title', flat=True)),
+            []
+        )
 
-        self.assertEqual(list(Book.objects.using('default').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            [])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            ['Dive into Python'])
+        self.assertEqual(
+            list(Book.objects.using('default').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            ['Dive into Python']
+        )
 
         # Reget the objects to clear caches
         dive = Book.objects.using('other').get(title="Dive into Python")
@@ -222,35 +230,53 @@ class QueryTestCase(TestCase):
 
         # Add a second author
         john = Person.objects.using('other').create(name="John Smith")
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
-            [])
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
+            []
+        )
 
         dive.authors.add(john)
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            ['Dive into Python'])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
-            ['Dive into Python'])
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            ['Dive into Python']
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
+            ['Dive into Python']
+        )
 
         # Remove the second author
         dive.authors.remove(john)
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            ['Dive into Python'])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
-            [])
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            ['Dive into Python']
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
+            []
+        )
 
         # Clear all authors
         dive.authors.clear()
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            [])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
-            [])
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='John Smith').values_list('title', flat=True)),
+            []
+        )
 
         # Create an author through the m2m interface
         dive.authors.create(name='Jane Brown')
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
-            [])
-        self.assertEqual(list(Book.objects.using('other').filter(authors__name='Jane Brown').values_list('title', flat=True)),
-            ['Dive into Python'])
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Mark Pilgrim').values_list('title', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Book.objects.using('other').filter(authors__name='Jane Brown').values_list('title', flat=True)),
+            ['Dive into Python']
+        )
 
     def test_m2m_reverse_operations(self):
         "M2M reverse manipulations are all constrained to a single DB"
@@ -269,31 +295,53 @@ class QueryTestCase(TestCase):
 
         # Add a books to the m2m
         mark.book_set.add(grease)
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
-            ['Mark Pilgrim'])
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)),
-            ['Mark Pilgrim'])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
+            ['Mark Pilgrim']
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)
+            ),
+            ['Mark Pilgrim']
+        )
 
         # Remove a book from the m2m
         mark.book_set.remove(grease)
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
-            ['Mark Pilgrim'])
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
+            ['Mark Pilgrim']
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)
+            ),
+            []
+        )
 
         # Clear the books associated with mark
         mark.book_set.clear()
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(book__title='Greasemonkey Hacks').values_list('name', flat=True)
+            ),
+            []
+        )
 
         # Create a book through the m2m interface
         mark.book_set.create(title="Dive into HTML5", published=datetime.date(2020, 1, 1))
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(book__title='Dive into HTML5').values_list('name', flat=True)),
-            ['Mark Pilgrim'])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(book__title='Dive into Python').values_list('name', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Person.objects.using('other').filter(book__title='Dive into HTML5').values_list('name', flat=True)),
+            ['Mark Pilgrim']
+        )
 
     def test_m2m_cross_database_protection(self):
         "Operations that involve sharing M2M objects across databases raise an error"
@@ -421,15 +469,27 @@ class QueryTestCase(TestCase):
         self.assertEqual(dive.editor.name, "Chris Mills")
 
         # Check that queries work across foreign key joins
-        self.assertEqual(list(Person.objects.using('default').filter(edited__title='Pro Django').values_list('name', flat=True)),
-            ['George Vilches'])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Pro Django').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('default').filter(edited__title='Pro Django').values_list('name', flat=True)),
+            ['George Vilches']
+        )
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Pro Django').values_list('name', flat=True)),
+            []
+        )
 
-        self.assertEqual(list(Person.objects.using('default').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            ['Chris Mills'])
+        self.assertEqual(
+            list(
+                Person.objects.using('default').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            []
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            ['Chris Mills']
+        )
 
         # Reget the objects to clear caches
         chris = Person.objects.using('other').get(name="Chris Mills")
@@ -452,37 +512,65 @@ class QueryTestCase(TestCase):
 
         # Add a second book edited by chris
         html5 = Book.objects.using('other').create(title="Dive into HTML5", published=datetime.date(2010, 3, 15))
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
+            []
+        )
 
         chris.edited.add(html5)
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
-            ['Chris Mills'])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            ['Chris Mills'])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
+            ['Chris Mills']
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            ['Chris Mills']
+        )
 
         # Remove the second editor
         chris.edited.remove(html5)
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            ['Chris Mills'])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            ['Chris Mills']
+        )
 
         # Clear all edited books
         chris.edited.clear()
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            []
+        )
 
         # Create an author through the m2m interface
         chris.edited.create(title='Dive into Water', published=datetime.date(2010, 3, 15))
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
-            [])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Water').values_list('name', flat=True)),
-            ['Chris Mills'])
-        self.assertEqual(list(Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)),
-            [])
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into HTML5').values_list('name', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Person.objects.using('other').filter(edited__title='Dive into Water').values_list('name', flat=True)),
+            ['Chris Mills']
+        )
+        self.assertEqual(
+            list(
+                Person.objects.using('other').filter(edited__title='Dive into Python').values_list('name', flat=True)
+            ),
+            []
+        )
 
     def test_foreign_key_cross_database_protection(self):
         "Operations that involve sharing FK objects across databases raise an error"
@@ -536,7 +624,7 @@ class QueryTestCase(TestCase):
         "ForeignKey.validate() uses the correct database"
         mickey = Person.objects.using('other').create(name="Mickey")
         pluto = Pet.objects.using('other').create(name="Pluto", owner=mickey)
-        self.assertEqual(None, pluto.full_clean())
+        self.assertIsNone(pluto.full_clean())
 
     def test_o2o_separation(self):
         "OneToOne fields are constrained to a single database"
@@ -556,15 +644,35 @@ class QueryTestCase(TestCase):
         self.assertEqual(bob.userprofile.flavor, "crunchy frog")
 
         # Check that queries work across joins
-        self.assertEqual(list(User.objects.using('default').filter(userprofile__flavor='chocolate').values_list('username', flat=True)),
-            ['alice'])
-        self.assertEqual(list(User.objects.using('other').filter(userprofile__flavor='chocolate').values_list('username', flat=True)),
-            [])
+        self.assertEqual(
+            list(
+                User.objects.using('default')
+                .filter(userprofile__flavor='chocolate').values_list('username', flat=True)
+            ),
+            ['alice']
+        )
+        self.assertEqual(
+            list(
+                User.objects.using('other')
+                .filter(userprofile__flavor='chocolate').values_list('username', flat=True)
+            ),
+            []
+        )
 
-        self.assertEqual(list(User.objects.using('default').filter(userprofile__flavor='crunchy frog').values_list('username', flat=True)),
-            [])
-        self.assertEqual(list(User.objects.using('other').filter(userprofile__flavor='crunchy frog').values_list('username', flat=True)),
-            ['bob'])
+        self.assertEqual(
+            list(
+                User.objects.using('default')
+                .filter(userprofile__flavor='crunchy frog').values_list('username', flat=True)
+            ),
+            []
+        )
+        self.assertEqual(
+            list(
+                User.objects.using('other')
+                .filter(userprofile__flavor='crunchy frog').values_list('username', flat=True)
+            ),
+            ['bob']
+        )
 
         # Reget the objects to clear caches
         alice_profile = UserProfile.objects.using('default').get(flavor='chocolate')
@@ -683,38 +791,58 @@ class QueryTestCase(TestCase):
         review1 = Review.objects.using('other').create(source="Python Weekly", content_object=dive)
         review2 = Review.objects.using('other').create(source="Python Monthly", content_object=temp)
 
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Weekly'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Weekly']
+        )
 
         # Add a second review
         dive.reviews.add(review2)
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Monthly', 'Python Weekly'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Monthly', 'Python Weekly']
+        )
 
         # Remove the second author
         dive.reviews.remove(review1)
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Monthly'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Monthly']
+        )
 
         # Clear all reviews
         dive.reviews.clear()
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
 
         # Create an author through the generic interface
         dive.reviews.create(source='Python Daily')
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
-            [])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Daily'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=dive.pk).values_list('source', flat=True)),
+            []
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Daily']
+        )
 
     def test_generic_key_cross_database_protection(self):
         "Operations that involve sharing generic key objects across databases raise an error"
@@ -750,17 +878,25 @@ class QueryTestCase(TestCase):
         review3.content_object = dive
         self.assertEqual(review3._state.db, 'other')
         # ... but it isn't saved yet
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=pro.pk).values_list('source', flat=True)),
-            ['Python Monthly'])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Weekly'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=pro.pk).values_list('source', flat=True)),
+            ['Python Monthly']
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Weekly']
+        )
 
         # When saved, John goes to 'other'
         review3.save()
-        self.assertEqual(list(Review.objects.using('default').filter(object_id=pro.pk).values_list('source', flat=True)),
-            ['Python Monthly'])
-        self.assertEqual(list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
-            ['Python Daily', 'Python Weekly'])
+        self.assertEqual(
+            list(Review.objects.using('default').filter(object_id=pro.pk).values_list('source', flat=True)),
+            ['Python Monthly']
+        )
+        self.assertEqual(
+            list(Review.objects.using('other').filter(object_id=dive.pk).values_list('source', flat=True)),
+            ['Python Daily', 'Python Weekly']
+        )
 
     def test_generic_key_deletion(self):
         "Cascaded deletions of Generic Key relations issue queries on the right database"
@@ -862,7 +998,7 @@ class QueryTestCase(TestCase):
                                   extra_arg=True)
 
 
-class ConnectionRouterTestCase(TestCase):
+class ConnectionRouterTestCase(SimpleTestCase):
     @override_settings(DATABASE_ROUTERS=[
         'multiple_database.tests.TestRouter',
         'multiple_database.tests.WriteRouter'])
@@ -931,7 +1067,7 @@ class RouterTestCase(TestCase):
             def allow_migrate(self, db, model):
                 """
                 Deprecated allow_migrate signature should trigger
-                RemovedInDjango20Warning.
+                RemovedInDjango110Warning.
                 """
                 assert db == 'default'
                 assert model is User
@@ -945,7 +1081,7 @@ class RouterTestCase(TestCase):
                     "The signature of allow_migrate has changed from "
                     "allow_migrate(self, db, model) to "
                     "allow_migrate(self, db, app_label, model_name=None, **hints). "
-                    "Support for the old signature will be removed in Django 2.0."
+                    "Support for the old signature will be removed in Django 1.10."
                 )
 
                 self.assertTrue(router.allow_migrate_model('default', User))
@@ -1043,6 +1179,17 @@ class RouterTestCase(TestCase):
         self.assertEqual(Book.objects.using('default').count(), 1)
         self.assertEqual(Book.objects.using('other').count(), 1)
 
+    def test_invalid_set_foreign_key_assignment(self):
+        marty = Person.objects.using('default').create(name="Marty Alchin")
+        dive = Book.objects.using('other').create(
+            title="Dive into Python",
+            published=datetime.date(2009, 5, 4),
+        )
+        # Set a foreign key set with an object from a different database
+        msg = "<Book: Dive into Python> instance isn't saved. Use bulk=False or save the object first."
+        with self.assertRaisesMessage(ValueError, msg):
+            marty.edited.set([dive])
+
     def test_foreign_key_cross_database_protection(self):
         "Foreign keys can cross databases if they two databases have a common source"
         # Create a book and author on the default database
@@ -1085,7 +1232,7 @@ class RouterTestCase(TestCase):
 
         # Set a foreign key set with an object from a different database
         try:
-            marty.edited = [pro, dive]
+            marty.edited.set([pro, dive], bulk=False)
         except ValueError:
             self.fail("Assignment across primary/replica databases with a common source should be ok")
 
@@ -1107,7 +1254,7 @@ class RouterTestCase(TestCase):
 
         # Add to a foreign key set with an object from a different database
         try:
-            marty.edited.add(dive)
+            marty.edited.add(dive, bulk=False)
         except ValueError:
             self.fail("Assignment across primary/replica databases with a common source should be ok")
 
@@ -1167,7 +1314,10 @@ class RouterTestCase(TestCase):
         self.assertEqual(cheesecake._state.db, 'default')
 
         # Same goes for get_or_create, regardless of whether getting or creating
-        cheesecake, created = mark.edited.get_or_create(title='Dive into Cheesecake', published=datetime.date(2010, 3, 15))
+        cheesecake, created = mark.edited.get_or_create(
+            title='Dive into Cheesecake',
+            published=datetime.date(2010, 3, 15),
+        )
         self.assertEqual(cheesecake._state.db, 'default')
 
         puddles, created = mark.edited.get_or_create(title='Dive into Puddles', published=datetime.date(2010, 3, 15))
@@ -1524,7 +1674,7 @@ class AntiPetRouter(object):
     # A router that only expresses an opinion on migrate,
     # passing pets to the 'other' database
 
-    def allow_migrate(self, db, app_label, model_name, **hints):
+    def allow_migrate(self, db, app_label, model_name=None, **hints):
         if db == 'other':
             return model_name == 'pet'
         else:
@@ -1578,7 +1728,10 @@ class FixtureTestCase(TestCase):
 
     @override_settings(DATABASE_ROUTERS=[AntiPetRouter()])
     def test_pseudo_empty_fixtures(self):
-        "A fixture can contain entries, but lead to nothing in the database; this shouldn't raise an error (ref #14068)"
+        """
+        A fixture can contain entries, but lead to nothing in the database;
+        this shouldn't raise an error (#14068).
+        """
         new_io = StringIO()
         management.call_command('loaddata', 'pets', stdout=new_io, stderr=new_io)
         command_output = new_io.getvalue().strip()

@@ -1,23 +1,27 @@
 from __future__ import unicode_literals
 
 import re
-from tempfile import NamedTemporaryFile
+import tempfile
 
 from django.contrib.gis import gdal
-from django.contrib.gis.geos import HAS_GEOS
+from django.contrib.gis.db.models import Extent, MakeLine, Union
+from django.contrib.gis.geos import (
+    GeometryCollection, GEOSGeometry, LinearRing, LineString, Point, Polygon,
+    fromstr,
+)
 from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase, ignore_warnings, skipUnlessDBFeature
 from django.utils import six
-from django.utils.deprecation import RemovedInDjango20Warning
+from django.utils.deprecation import (
+    RemovedInDjango20Warning, RemovedInDjango110Warning,
+)
 
 from ..utils import no_oracle, oracle, postgis, spatialite
-
-if HAS_GEOS:
-    from django.contrib.gis.db.models import Extent, MakeLine, Union
-    from django.contrib.gis.geos import (fromstr, GEOSGeometry,
-        Point, LineString, LinearRing, Polygon, GeometryCollection)
-    from .models import Country, City, PennsylvaniaCity, State, Track, NonConcreteModel, Feature, MinusOneSRID
+from .models import (
+    City, Country, Feature, MinusOneSRID, NonConcreteModel, PennsylvaniaCity,
+    State, Track,
+)
 
 
 def postgis_bug_version():
@@ -219,10 +223,10 @@ class GeoModelTest(TestCase):
         self.assertIn('"point": "%s"' % houston.point.ewkt, result)
 
         # Reload now dumped data
-        with NamedTemporaryFile(mode='w', suffix='.json') as tempfile:
-            tempfile.write(result)
-            tempfile.seek(0)
-            call_command('loaddata', tempfile.name, verbosity=0)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json') as tmp:
+            tmp.write(result)
+            tmp.seek(0)
+            call_command('loaddata', tmp.name, verbosity=0)
         self.assertListEqual(original_data, list(City.objects.all().order_by('name')))
 
 
@@ -431,6 +435,7 @@ class GeoLookupTest(TestCase):
 
 
 @skipUnlessDBFeature("gis_enabled")
+@ignore_warnings(category=RemovedInDjango20Warning)
 class GeoQuerySetTest(TestCase):
     fixtures = ['initial']
 
@@ -488,7 +493,7 @@ class GeoQuerySetTest(TestCase):
             self.assertIsInstance(country.envelope, Polygon)
 
     @skipUnlessDBFeature("supports_extent_aggr")
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     def test_extent(self):
         """
         Testing the (deprecated) `extent` GeoQuerySet method and the Extent
@@ -610,7 +615,7 @@ class GeoQuerySetTest(TestCase):
         if oracle:
             # No precision parameter for Oracle :-/
             gml_regex = re.compile(
-                r'^<gml:Point srsName="SDO:4326" xmlns:gml="http://www.opengis.net/gml">'
+                r'^<gml:Point srsName="EPSG:4326" xmlns:gml="http://www.opengis.net/gml">'
                 r'<gml:coordinates decimal="\." cs="," ts=" ">-104.60925\d+,38.25500\d+ '
                 r'</gml:coordinates></gml:Point>'
             )
@@ -646,7 +651,7 @@ class GeoQuerySetTest(TestCase):
         for ptown in [ptown1, ptown2]:
             self.assertEqual('<Point><coordinates>-104.609252,38.255001</coordinates></Point>', ptown.kml)
 
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     def test_make_line(self):
         """
         Testing the (deprecated) `make_line` GeoQuerySet method and the MakeLine
@@ -691,12 +696,8 @@ class GeoQuerySetTest(TestCase):
 
         for c in City.objects.filter(point__isnull=False).num_geom():
             # Oracle and PostGIS 2.0+ will return 1 for the number of
-            # geometries on non-collections, whereas PostGIS < 2.0.0
-            # will return None.
-            if postgis and connection.ops.spatial_version < (2, 0, 0):
-                self.assertIsNone(c.num_geom)
-            else:
-                self.assertEqual(1, c.num_geom)
+            # geometries on non-collections.
+            self.assertEqual(1, c.num_geom)
 
     @skipUnlessDBFeature("supports_num_points_poly")
     def test_num_points(self):
@@ -862,7 +863,7 @@ class GeoQuerySetTest(TestCase):
     # but this seems unexpected and should be investigated to determine the cause.
     @skipUnlessDBFeature("has_unionagg_method")
     @no_oracle
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     def test_unionagg(self):
         """
         Testing the (deprecated) `unionagg` (aggregate union) GeoQuerySet method

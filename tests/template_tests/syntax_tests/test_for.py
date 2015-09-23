@@ -1,11 +1,12 @@
 from django.template import TemplateSyntaxError
 from django.test import SimpleTestCase, ignore_warnings
-from django.utils.deprecation import RemovedInDjango20Warning
+from django.utils.deprecation import RemovedInDjango110Warning
 
 from ..utils import setup
 
 
 class ForTagTests(SimpleTestCase):
+    libraries = {'custom': 'template_tests.templatetags.custom'}
 
     @setup({'for-tag01': '{% for val in values %}{{ val }}{% endfor %}'})
     def test_for_tag01(self):
@@ -94,7 +95,9 @@ class ForTagTests(SimpleTestCase):
 
     @setup({'for-tag-unpack13': '{% for x,y,z in items %}{{ x }}:{{ y }},{{ z }}/{% endfor %}'})
     def test_for_tag_unpack13(self):
-        output = self.engine.render_to_string('for-tag-unpack13', {'items': (('one', 1, 'carrot'), ('two', 2, 'cheese'))})
+        output = self.engine.render_to_string(
+            'for-tag-unpack13', {'items': (('one', 1, 'carrot'), ('two', 2, 'cheese'))}
+        )
         if self.engine.string_if_invalid:
             self.assertEqual(output, 'one:1,carrot/two:2,cheese/')
         else:
@@ -125,9 +128,9 @@ class ForTagTests(SimpleTestCase):
         self.assertEqual(output, 'abc')
 
     # These tests raise deprecation warnings and will raise an exception
-    # in Django 2.0. The existing behavior is silent truncation if the
+    # in Django 1.10. The existing behavior is silent truncation if the
     # length of loopvars differs to the length of each set of items.
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     @setup({'for-tag-unpack10': '{% for x,y in items %}{{ x }}:{{ y }}/{% endfor %}'})
     def test_for_tag_unpack10(self):
         output = self.engine.render_to_string(
@@ -136,7 +139,7 @@ class ForTagTests(SimpleTestCase):
         )
         self.assertEqual(output, 'one:1/two:2/')
 
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     @setup({'for-tag-unpack11': '{% for x,y,z in items %}{{ x }}:{{ y }},{{ z }}/{% endfor %}'})
     def test_for_tag_unpack11(self):
         output = self.engine.render_to_string(
@@ -149,7 +152,7 @@ class ForTagTests(SimpleTestCase):
         else:
             self.assertEqual(output, 'one:1,/two:2,/')
 
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     @setup({'for-tag-unpack12': '{% for x,y,z in items %}{{ x }}:{{ y }},{{ z }}/{% endfor %}'})
     def test_for_tag_unpack12(self):
         output = self.engine.render_to_string(
@@ -161,7 +164,7 @@ class ForTagTests(SimpleTestCase):
         else:
             self.assertEqual(output, 'one:1,carrot/two:2,/')
 
-    @ignore_warnings(category=RemovedInDjango20Warning)
+    @ignore_warnings(category=RemovedInDjango110Warning)
     @setup({'for-tag-unpack14': '{% for x,y in items %}{{ x }}:{{ y }}/{% endfor %}'})
     def test_for_tag_unpack14(self):
         output = self.engine.render_to_string('for-tag-unpack14', {'items': (1, 2)})

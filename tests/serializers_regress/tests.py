@@ -19,7 +19,7 @@ from django.core.serializers.base import DeserializationError
 from django.core.serializers.xml_serializer import DTDForbidden
 from django.db import connection, models
 from django.http import HttpResponse
-from django.test import TestCase, skipUnlessDBFeature
+from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
 from django.utils import six
 from django.utils.functional import curry
 
@@ -584,7 +584,7 @@ for format in [f for f in serializers.get_serializer_formats()
         setattr(SerializerTests, 'test_' + format + '_serializer_stream', curry(streamTest, format))
 
 
-class XmlDeserializerSecurityTests(TestCase):
+class XmlDeserializerSecurityTests(SimpleTestCase):
 
     def test_no_dtd(self):
         """
@@ -592,7 +592,6 @@ class XmlDeserializerSecurityTests(TestCase):
 
         This is the most straightforward way to prevent all entity definitions
         and avoid both external entities and entity-expansion attacks.
-
         """
         xml = '<?xml version="1.0" standalone="no"?><!DOCTYPE example SYSTEM "http://example.com/example.dtd">'
         with self.assertRaises(DTDForbidden):

@@ -1,10 +1,12 @@
 # -*- encoding: utf-8 -*-
 from __future__ import unicode_literals
 
+import decimal
 import unittest
 
 from django.core.checks import Error, Warning as DjangoWarning
 from django.db import connection, models
+from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
 
@@ -63,8 +65,24 @@ class BooleanFieldTests(IsolatedModelsTestCase):
         ]
         self.assertEqual(errors, expected)
 
+    def test_invalid_default(self):
+        class Model(models.Model):
+            field = models.BooleanField(default='invalid')
 
-class CharFieldTests(IsolatedModelsTestCase):
+        field = Model._meta.get_field('field')
+        errors = field.check()
+        expected = [
+            Error(
+                "Invalid 'default' value: 'invalid' value must be either True or False.",
+                hint=None,
+                obj=field,
+                id='fields.E008',
+            ),
+        ]
+        self.assertEqual(errors, expected)
+
+
+class CharFieldTests(IsolatedModelsTestCase, TestCase):
 
     def test_valid_field(self):
         class Model(models.Model):
@@ -116,6 +134,22 @@ class CharFieldTests(IsolatedModelsTestCase):
     def test_bad_max_length_value(self):
         class Model(models.Model):
             field = models.CharField(max_length="bad")
+
+        field = Model._meta.get_field('field')
+        errors = field.check()
+        expected = [
+            Error(
+                "'max_length' must be a positive integer.",
+                hint=None,
+                obj=field,
+                id='fields.E121',
+            ),
+        ]
+        self.assertEqual(errors, expected)
+
+    def test_str_max_length_value(self):
+        class Model(models.Model):
+            field = models.CharField(max_length='20')
 
         field = Model._meta.get_field('field')
         errors = field.check()
@@ -198,8 +232,24 @@ class CharFieldTests(IsolatedModelsTestCase):
         ]
         self.assertEqual(errors, expected)
 
+    def test_invalid_default(self):
+        class Model(models.Model):
+            field = models.CharField(max_length=10, default=None)
 
-class DateFieldTests(IsolatedModelsTestCase):
+        field = Model._meta.get_field('field')
+        errors = field.check()
+        expected = [
+            Error(
+                "Invalid 'default' value: This field cannot be null.",
+                hint=None,
+                obj=field,
+                id='fields.E008',
+            ),
+        ]
+        self.assertEqual(errors, expected)
+
+
+class DateFieldTests(IsolatedModelsTestCase, TestCase):
 
     def test_auto_now_and_auto_now_add_raise_error(self):
         class Model(models.Model):
@@ -264,8 +314,27 @@ class DateFieldTests(IsolatedModelsTestCase):
     def test_fix_default_value_tz(self):
         self.test_fix_default_value()
 
+    def test_invalid_default(self):
+        class Model(models.Model):
+            field = models.DateField(default='invalid')
 
-class DateTimeFieldTests(IsolatedModelsTestCase):
+        field = Model._meta.get_field('field')
+        errors = field.check()
+        message = (
+            "Invalid 'default' value: 'invalid' value has an invalid date format. It must be in YYYY-MM-DD format."
+        )
+        expected = [
+            Error(
+                message,
+                hint=None,
+                obj=field,
+                id='fields.E008',
+            ),
+        ]
+        self.assertEqual(errors, expected)
+
+
+class DateTimeFieldTests(IsolatedModelsTestCase, TestCase):
 
     def test_fix_default_value(self):
         class Model(models.Model):
@@ -402,6 +471,22 @@ class DecimalFieldTests(IsolatedModelsTestCase):
         expected = []
         self.assertEqual(errors, expected)
 
+    def test_invalid_default(self):
+        class Model(models.Model):
+            field = models.DecimalField(max_digits=3, decimal_places=2, default=decimal.Decimal('20.00'))
+
+        field = Model._meta.get_field('field')
+        errors = field.check()
+        expected = [
+            Error(
+                "Invalid 'default' value: Ensure that there are no more than 3 digits in total.",
+                hint=None,
+                obj=field,
+                id='fields.E008',
+            ),
+        ]
+        self.assertEqual(errors, expected)
+
 
 class FileFieldTests(IsolatedModelsTestCase):
 
@@ -532,7 +617,7 @@ class IntegerFieldTests(IsolatedModelsTestCase):
         self.assertEqual(errors, expected)
 
 
-class TimeFieldTests(IsolatedModelsTestCase):
+class TimeFieldTests(IsolatedModelsTestCase, TestCase):
 
     def test_fix_default_value(self):
         class Model(models.Model):
